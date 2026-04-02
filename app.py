@@ -15,17 +15,17 @@ st.set_page_config(
 )
 
 # ============================
-# GLOBAL STYLES
+# GLOBAL STYLES — LIGHT THEME
 # ============================
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap');
 
-/* Base */
+/* Base — light */
 html, body, [class*="css"] {
     font-family: 'DM Mono', monospace;
-    background-color: #0d0f14;
-    color: #d4dbe8;
+    background-color: #f4f6fa;
+    color: #1a2540;
 }
 
 /* Hide default Streamlit chrome */
@@ -34,8 +34,8 @@ html, body, [class*="css"] {
 
 /* ── Header Banner ── */
 .dash-header {
-    background: linear-gradient(135deg, #0d1b2a 0%, #112240 60%, #0a3055 100%);
-    border: 1px solid #1e3a5f;
+    background: linear-gradient(135deg, #1a3a6e 0%, #1e4d8c 60%, #1565c0 100%);
+    border: 1px solid #1a5cb5;
     border-radius: 12px;
     padding: 28px 40px;
     margin-bottom: 28px;
@@ -47,21 +47,21 @@ html, body, [class*="css"] {
     position: absolute;
     top: -40px; right: -40px;
     width: 220px; height: 220px;
-    background: radial-gradient(circle, rgba(56,189,248,0.12) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(255,255,255,0.10) 0%, transparent 70%);
     border-radius: 50%;
 }
 .dash-title {
     font-family: 'Syne', sans-serif;
     font-size: 1.75rem;
     font-weight: 800;
-    color: #e2eaf4;
+    color: #ffffff;
     letter-spacing: 0.04em;
     margin: 0;
 }
 .dash-subtitle {
     font-family: 'DM Mono', monospace;
     font-size: 0.75rem;
-    color: #38bdf8;
+    color: #90caf9;
     letter-spacing: 0.12em;
     text-transform: uppercase;
     margin-top: 6px;
@@ -70,17 +70,17 @@ html, body, [class*="css"] {
 /* ── Tabs ── */
 .stTabs [data-baseweb="tab-list"] {
     gap: 4px;
-    background: #111520;
+    background: #e8edf5;
     border-radius: 10px;
     padding: 4px;
-    border: 1px solid #1e2d45;
+    border: 1px solid #c5d0e0;
 }
 .stTabs [data-baseweb="tab"] {
     font-family: 'Syne', sans-serif;
     font-size: 0.82rem;
     font-weight: 600;
     letter-spacing: 0.06em;
-    color: #6b80a0;
+    color: #4a5e80;
     background: transparent;
     border-radius: 8px;
     padding: 10px 24px;
@@ -88,9 +88,9 @@ html, body, [class*="css"] {
     transition: all 0.2s;
 }
 .stTabs [aria-selected="true"] {
-    background: #1a2e4a !important;
-    color: #38bdf8 !important;
-    border: 1px solid #234b72 !important;
+    background: #ffffff !important;
+    color: #1565c0 !important;
+    border: 1px solid #c5d0e0 !important;
 }
 
 /* ── Metric Cards ── */
@@ -101,27 +101,28 @@ html, body, [class*="css"] {
     margin: 18px 0;
 }
 .metric-card {
-    background: #111520;
-    border: 1px solid #1e2d45;
+    background: #ffffff;
+    border: 1px solid #d0daea;
     border-radius: 10px;
     padding: 18px 20px;
     position: relative;
     overflow: hidden;
     transition: border-color 0.2s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
-.metric-card:hover { border-color: #38bdf8; }
+.metric-card:hover { border-color: #1565c0; }
 .metric-card::after {
     content: "";
     position: absolute;
     bottom: 0; left: 0; right: 0;
     height: 2px;
-    background: linear-gradient(90deg, #38bdf8, #0ea5e9);
-    opacity: 0.5;
+    background: linear-gradient(90deg, #1565c0, #42a5f5);
+    opacity: 0.7;
 }
 .metric-label {
     font-family: 'DM Mono', monospace;
     font-size: 0.65rem;
-    color: #4a6080;
+    color: #5a6e8a;
     letter-spacing: 0.1em;
     text-transform: uppercase;
     margin-bottom: 8px;
@@ -130,11 +131,11 @@ html, body, [class*="css"] {
     font-family: 'Syne', sans-serif;
     font-size: 1.5rem;
     font-weight: 700;
-    color: #e2eaf4;
+    color: #1a2540;
 }
 .metric-sub {
     font-size: 0.7rem;
-    color: #4a6080;
+    color: #5a6e8a;
     margin-top: 4px;
 }
 
@@ -146,20 +147,21 @@ html, body, [class*="css"] {
     margin: 18px 0;
 }
 .change-card {
-    background: #111520;
-    border: 1px solid #1e2d45;
+    background: #ffffff;
+    border: 1px solid #d0daea;
     border-radius: 10px;
     padding: 22px 24px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
 .change-card-title {
     font-family: 'Syne', sans-serif;
     font-size: 0.78rem;
     font-weight: 600;
-    color: #38bdf8;
+    color: #1565c0;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     margin-bottom: 14px;
-    border-bottom: 1px solid #1e2d45;
+    border-bottom: 1px solid #d0daea;
     padding-bottom: 10px;
 }
 .change-row {
@@ -167,20 +169,20 @@ html, body, [class*="css"] {
     justify-content: space-between;
     align-items: center;
     padding: 6px 0;
-    border-bottom: 1px solid #161d2c;
+    border-bottom: 1px solid #eef1f7;
 }
 .change-row:last-child { border-bottom: none; }
-.change-key { font-size: 0.72rem; color: #6b80a0; }
+.change-key { font-size: 0.72rem; color: #4a5e80; }
 .change-val { font-family: 'Syne', sans-serif; font-size: 0.95rem; font-weight: 700; }
-.pos { color: #34d399; }
-.neg { color: #f87171; }
-.neu { color: #e2eaf4; }
+.pos { color: #1a7a4a; }
+.neg { color: #c0392b; }
+.neu { color: #1a2540; }
 
 /* ── Insight Block ── */
 .insight-block {
-    background: linear-gradient(135deg, #0d1b2a, #0f2035);
-    border: 1px solid #1e3a5f;
-    border-left: 4px solid #38bdf8;
+    background: #f0f5ff;
+    border: 1px solid #c5d0e0;
+    border-left: 4px solid #1565c0;
     border-radius: 10px;
     padding: 24px 28px;
     margin-top: 18px;
@@ -189,60 +191,60 @@ html, body, [class*="css"] {
     font-family: 'Syne', sans-serif;
     font-size: 0.7rem;
     font-weight: 700;
-    color: #38bdf8;
+    color: #1565c0;
     letter-spacing: 0.14em;
     text-transform: uppercase;
     margin-bottom: 10px;
 }
 .insight-text {
     font-size: 0.82rem;
-    color: #a8bdd0;
+    color: #2a3a55;
     line-height: 1.7;
 }
-.insight-text b { color: #e2eaf4; }
+.insight-text b { color: #1a2540; }
 
 /* ── Section Labels ── */
 .section-label {
     font-family: 'Syne', sans-serif;
     font-size: 0.7rem;
     font-weight: 700;
-    color: #38bdf8;
+    color: #1565c0;
     letter-spacing: 0.14em;
     text-transform: uppercase;
     padding: 0 0 10px 0;
-    border-bottom: 1px solid #1e2d45;
+    border-bottom: 1px solid #d0daea;
     margin-bottom: 14px;
 }
 
 /* ── Sidebar ── */
 [data-testid="stSidebar"] {
-    background: #0a0d13;
-    border-right: 1px solid #1a2535;
+    background: #eef1f7;
+    border-right: 1px solid #d0daea;
 }
 [data-testid="stSidebar"] .block-container { padding: 1.5rem 1.2rem; }
 
 /* ── Selectbox / Slider ── */
 .stSelectbox > div > div, .stSlider > div {
-    background: #111520 !important;
-    border-color: #1e2d45 !important;
+    background: #ffffff !important;
+    border-color: #c5d0e0 !important;
     border-radius: 8px !important;
 }
 .stSelectbox label, .stSlider label {
     font-size: 0.7rem !important;
-    color: #4a6080 !important;
+    color: #4a5e80 !important;
     letter-spacing: 0.08em !important;
     text-transform: uppercase !important;
 }
 
 /* ── Dataframe ── */
 .stDataFrame {
-    border: 1px solid #1e2d45;
+    border: 1px solid #d0daea;
     border-radius: 8px;
 }
 
 /* ── Button ── */
 .stButton > button {
-    background: linear-gradient(135deg, #0ea5e9, #0284c7);
+    background: linear-gradient(135deg, #1565c0, #0d47a1);
     color: white;
     border: none;
     border-radius: 8px;
@@ -254,6 +256,27 @@ html, body, [class*="css"] {
     transition: opacity 0.2s;
 }
 .stButton > button:hover { opacity: 0.85; }
+
+/* ── Axis scale panel ── */
+.axis-panel {
+    background: #ffffff;
+    border: 1px solid #d0daea;
+    border-radius: 10px;
+    padding: 18px 22px;
+    margin-bottom: 14px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+.axis-panel-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #1565c0;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    border-bottom: 1px solid #e0e8f5;
+    padding-bottom: 8px;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -275,13 +298,12 @@ with st.sidebar:
     file = st.file_uploader("Upload Excel File (.xlsx)", type=["xlsx"])
     st.markdown("---")
     st.markdown('<div class="section-label">ABOUT</div>', unsafe_allow_html=True)
-    st.markdown('<p style="font-size:0.72rem;color:#4a6080;line-height:1.6;">Upload an Excel file with the first column as Date and subsequent columns as numeric variables.</p>', unsafe_allow_html=True)
+    st.markdown('<p style="font-size:0.72rem;color:#4a5e80;line-height:1.6;">Upload an Excel file with the first column as Date and subsequent columns as numeric variables.</p>', unsafe_allow_html=True)
 
 # ============================
 # MAIN LOGIC
 # ============================
 if file:
-    # ── Load ──
     df = pd.read_excel(file, header=0)
     df = df.dropna(how="all")
 
@@ -296,7 +318,6 @@ if file:
     df = df.dropna(subset=df.columns[1:], how="all")
     numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
 
-    # ── Build numbered labels for dropdowns ──
     all_cols = list(df.columns)
     def labeled(col):
         idx = all_cols.index(col)
@@ -310,7 +331,7 @@ if file:
     # ============================
     tab1, tab2, tab3 = st.tabs(["⚙️  Preprocess", "📊  Correlation", "📈  Analysis"])
 
-    # ── TAB 1: PREPROCESS ──────────────────────────────────
+    # ── TAB 1: PREPROCESS ──
     with tab1:
         st.markdown('<div class="section-label">DATA CLEANING & OUTLIER TREATMENT</div>', unsafe_allow_html=True)
 
@@ -337,7 +358,7 @@ if file:
         st.markdown('<div class="section-label" style="margin-top:18px;">CLEANED DATA PREVIEW</div>', unsafe_allow_html=True)
         st.dataframe(df_clean, use_container_width=True, hide_index=True)
 
-    # ── TAB 2: CORRELATION ─────────────────────────────────
+    # ── TAB 2: CORRELATION ──
     with tab2:
         st.markdown('<div class="section-label">CORRELATION INTELLIGENCE</div>', unsafe_allow_html=True)
 
@@ -347,24 +368,22 @@ if file:
 
         corr = df[numeric_cols].corr()
 
-        # Full heatmap
         st.markdown('<div class="section-label" style="margin-top:6px;">FULL CORRELATION MATRIX</div>', unsafe_allow_html=True)
         fig_full = go.Figure(data=go.Heatmap(
             z=corr.values, x=corr.columns, y=corr.columns,
             colorscale="RdYlGn", zmin=-1, zmax=1,
             text=np.round(corr.values, 2),
-            texttemplate="%{text}", textfont={"size": 11}
+            texttemplate="%{text}", textfont={"size": 11, "color": "#1a2540"}
         ))
         fig_full.update_layout(
             height=850, margin=dict(l=40, r=40, t=30, b=40),
-            paper_bgcolor="#0d0f14", plot_bgcolor="#0d0f14",
-            font=dict(color="#d4dbe8"),
-            xaxis=dict(tickangle=-45, tickfont=dict(size=10)),
-            yaxis=dict(tickfont=dict(size=10))
+            paper_bgcolor="#f4f6fa", plot_bgcolor="#f4f6fa",
+            font=dict(color="#1a2540"),
+            xaxis=dict(tickangle=-45, tickfont=dict(size=10, color="#1a2540")),
+            yaxis=dict(tickfont=dict(size=10, color="#1a2540"))
         )
         st.plotly_chart(fig_full, use_container_width=True, config={"scrollZoom": True})
 
-        # Top correlated
         st.markdown('<div class="section-label" style="margin-top:18px;">FOCUSED CORRELATION — TOP VARIABLES</div>', unsafe_allow_html=True)
         c1, c2 = st.columns([3, 1])
         with c1:
@@ -380,17 +399,17 @@ if file:
             z=corr_filtered.values, x=corr_filtered.columns, y=corr_filtered.columns,
             colorscale="RdYlGn", zmin=-1, zmax=1,
             text=np.round(corr_filtered.values, 2),
-            texttemplate="%{text}", textfont={"size": 13}
+            texttemplate="%{text}", textfont={"size": 13, "color": "#1a2540"}
         ))
         fig_top.update_layout(
             height=640, margin=dict(l=40, r=40, t=30, b=40),
-            paper_bgcolor="#0d0f14", plot_bgcolor="#0d0f14",
-            font=dict(color="#d4dbe8"),
-            xaxis=dict(tickangle=-45)
+            paper_bgcolor="#f4f6fa", plot_bgcolor="#f4f6fa",
+            font=dict(color="#1a2540"),
+            xaxis=dict(tickangle=-45, tickfont=dict(color="#1a2540")),
+            yaxis=dict(tickfont=dict(color="#1a2540"))
         )
         st.plotly_chart(fig_top, use_container_width=True)
 
-        # Clustered
         st.markdown('<div class="section-label" style="margin-top:18px;">CLUSTERED CORRELATION — HIERARCHICAL GROUPING</div>', unsafe_allow_html=True)
         try:
             linked = linkage(corr, method='ward')
@@ -401,20 +420,21 @@ if file:
                 z=corr_clustered.values, x=corr_clustered.columns, y=corr_clustered.columns,
                 colorscale="RdYlGn", zmin=-1, zmax=1,
                 text=np.round(corr_clustered.values, 2),
-                texttemplate="%{text}", textfont={"size": 11}
+                texttemplate="%{text}", textfont={"size": 11, "color": "#1a2540"}
             ))
             fig_cluster.update_layout(
                 height=850, margin=dict(l=40, r=40, t=30, b=40),
-                paper_bgcolor="#0d0f14", plot_bgcolor="#0d0f14",
-                font=dict(color="#d4dbe8"),
-                xaxis=dict(tickangle=-45)
+                paper_bgcolor="#f4f6fa", plot_bgcolor="#f4f6fa",
+                font=dict(color="#1a2540"),
+                xaxis=dict(tickangle=-45, tickfont=dict(color="#1a2540")),
+                yaxis=dict(tickfont=dict(color="#1a2540"))
             )
             st.plotly_chart(fig_cluster, use_container_width=True)
             st.success("✅ Variables automatically grouped by similarity")
         except Exception:
             st.warning("Clustering unavailable. Ensure scipy is installed.")
 
-    # ── TAB 3: ANALYSIS ────────────────────────────────────
+    # ── TAB 3: ANALYSIS ──
     with tab3:
         st.markdown('<div class="section-label">DYNAMIC VARIABLE ANALYSIS</div>', unsafe_allow_html=True)
 
@@ -464,7 +484,6 @@ if file:
         strength = relation_strength(corr_val)
         relation = "Positive" if corr_val > 0 else "Negative"
 
-        # ── % Change Calculations ──
         def pct_change_series(series):
             s = series.dropna()
             if len(s) < 2:
@@ -540,14 +559,6 @@ if file:
                     <span class="change-key">Avg Period-on-Period Change</span>
                     <span class="change-val {px_avg_cls}">{px_avg_str}</span>
                 </div>
-                <div class="change-row">
-                    <span class="change-key">Min / Max</span>
-                    <span class="change-val neu">{x.min():.4g} / {x.max():.4g}</span>
-                </div>
-                <div class="change-row">
-                    <span class="change-key">Std Deviation</span>
-                    <span class="change-val neu">{x.std():.4g}</span>
-                </div>
             </div>
             <div class="change-card">
                 <div class="change-card-title">📌 {secondary} — Period Performance</div>
@@ -567,118 +578,158 @@ if file:
                     <span class="change-key">Avg Period-on-Period Change</span>
                     <span class="change-val {py_avg_cls}">{py_avg_str}</span>
                 </div>
-                <div class="change-row">
-                    <span class="change-key">Min / Max</span>
-                    <span class="change-val neu">{y.min():.4g} / {y.max():.4g}</span>
-                </div>
-                <div class="change-row">
-                    <span class="change-key">Std Deviation</span>
-                    <span class="change-val neu">{y.std():.4g}</span>
-                </div>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
-        # ── CHART — white background, shaded fills, colored axes like Image 2 ──
+        # ── AXIS SCALE CUSTOMIZATION ──
+        st.markdown('<div class="section-label" style="margin-top:8px;">CHART AXIS SCALE CUSTOMIZATION</div>', unsafe_allow_html=True)
+
+        x_min_data = float(x.min()) if not x.isna().all() else 0.0
+        x_max_data = float(x.max()) if not x.isna().all() else 100.0
+        y_min_data = float(y.min()) if not y.isna().all() else 0.0
+        y_max_data = float(y.max()) if not y.isna().all() else 100.0
+
+        x_padding = (x_max_data - x_min_data) * 0.1 if x_max_data != x_min_data else abs(x_max_data) * 0.1 or 10
+        y_padding = (y_max_data - y_min_data) * 0.1 if y_max_data != y_min_data else abs(y_max_data) * 0.1 or 10
+
+        ac1, ac2, ac3, ac4, ac5 = st.columns(5)
+        with ac1:
+            y1_min = st.number_input(
+                f"Y-Left Min ({primary[:12]}...)" if len(primary) > 12 else f"Y-Left Min ({primary})",
+                value=round(x_min_data - x_padding, 4), format="%.4f", key="y1min"
+            )
+        with ac2:
+            y1_max = st.number_input(
+                f"Y-Left Max ({primary[:12]}...)" if len(primary) > 12 else f"Y-Left Max ({primary})",
+                value=round(x_max_data + x_padding, 4), format="%.4f", key="y1max"
+            )
+        with ac3:
+            y2_min = st.number_input(
+                f"Y-Right Min ({secondary[:12]}...)" if len(secondary) > 12 else f"Y-Right Min ({secondary})",
+                value=round(y_min_data - y_padding, 4), format="%.4f", key="y2min"
+            )
+        with ac4:
+            y2_max = st.number_input(
+                f"Y-Right Max ({secondary[:12]}...)" if len(secondary) > 12 else f"Y-Right Max ({secondary})",
+                value=round(y_max_data + y_padding, 4), format="%.4f", key="y2max"
+            )
+        with ac5:
+            auto_scale = st.checkbox("Auto Scale", value=True, key="autoscale")
+
+        # ── CHART ──
         st.markdown('<div class="section-label" style="margin-top:8px;">TIME SERIES & TREND</div>', unsafe_allow_html=True)
 
         PRIMARY_COLOR   = "#1a6fba"   # blue  – primary axis
         SECONDARY_COLOR = "#c0392b"   # red   – secondary axis
-        TREND_COLOR     = "#e6b800"   # gold  – trendline
 
         fig = go.Figure()
 
-        # Primary fill area
+        # Primary smooth line — NO fill
         fig.add_trace(go.Scatter(
             x=df_f[date_col], y=x,
             name=primary,
             mode="lines",
-            line=dict(width=2.5, color=PRIMARY_COLOR),
-            fill="tozeroy",
-            fillcolor="rgba(26,111,186,0.10)"
+            line=dict(width=2.5, color=PRIMARY_COLOR, shape="spline", smoothing=1.3),
         ))
 
-        # Secondary fill area
+        # Primary exponential trendline — solid, smooth, same blue, full range with 500 dense points, hidden from legend
+        try:
+            df_trend_p = df_f[[date_col, primary]].dropna()
+            df_trend_p = df_trend_p[df_trend_p[primary] > 0].reset_index(drop=True)
+            t_fit = np.arange(len(df_trend_p))
+            y_log = np.log(df_trend_p[primary].values)
+            coef  = np.polyfit(t_fit, y_log, 1)
+
+            # Generate 500 evenly-spaced points across full date range → no gaps
+            date_start_ns = df_trend_p[date_col].iloc[0].value
+            date_end_ns   = df_trend_p[date_col].iloc[-1].value
+            dense_dates   = pd.to_datetime(np.linspace(date_start_ns, date_end_ns, 500))
+            t_dense       = np.linspace(0, len(df_trend_p) - 1, 500)
+            trend_dense   = np.exp(coef[1]) * np.exp(coef[0] * t_dense)
+
+            fig.add_trace(go.Scatter(
+                x=dense_dates, y=trend_dense,
+                name=f"Trend ({primary})",
+                mode="lines",
+                showlegend=False,
+                line=dict(width=2, color=PRIMARY_COLOR, shape="spline", smoothing=1.3)
+            ))
+        except Exception:
+            pass
+
+        # Secondary smooth line — NO fill, NO trendline
         fig.add_trace(go.Scatter(
             x=df_f[date_col], y=y,
             name=secondary,
             yaxis="y2",
             mode="lines",
-            line=dict(width=2.5, color=SECONDARY_COLOR),
-            fill="tozeroy",
-            fillcolor="rgba(192,57,43,0.10)"
+            line=dict(width=2.5, color=SECONDARY_COLOR, shape="spline", smoothing=1.3),
         ))
 
-        # Exponential trendline on primary (dashed gold, like Image 2)
-        try:
-            df_trend = df_f[[date_col, primary]].dropna()
-            df_trend = df_trend[df_trend[primary] > 0]
-            t = np.arange(len(df_trend))
-            y_log = np.log(df_trend[primary])
-            coef  = np.polyfit(t, y_log, 1)
-            trend = np.exp(coef[1]) * np.exp(coef[0] * t)
-            fig.add_trace(go.Scatter(
-                x=df_trend[date_col], y=trend,
-                name=f"Trend ({primary})",
-                mode="lines",
-                line=dict(dash="dash", width=2, color=TREND_COLOR)
-            ))
-        except Exception:
-            pass
+        # Build axis range config
+        if auto_scale:
+            yaxis_range  = None
+            yaxis2_range = None
+        else:
+            yaxis_range  = [y1_min, y1_max]
+            yaxis2_range = [y2_min, y2_max]
 
         fig.update_layout(
-            height=500,
+            height=520,
             title=dict(
                 text=f"<b>{primary}</b>  vs  <b>{secondary}</b>",
-                font=dict(family="Arial, sans-serif", size=15, color="#1a1a2e"),
+                font=dict(family="Syne, sans-serif", size=15, color="#1a2540"),
                 x=0.5, xanchor="center"
             ),
             paper_bgcolor="#ffffff",
             plot_bgcolor="#ffffff",
-            font=dict(family="Arial, sans-serif", color="#333333", size=11),
+            font=dict(family="DM Mono, monospace", color="#1a2540", size=11),
             legend=dict(
-                bgcolor="#f8f8f8", bordercolor="#cccccc", borderwidth=1,
-                orientation="h", x=0.5, xanchor="center", y=-0.18,
-                font=dict(size=12, color="#333333")
+                bgcolor="#f8f9fc", bordercolor="#d0daea", borderwidth=1,
+                orientation="h", x=0.5, xanchor="center", y=-0.22,
+                font=dict(size=12, color="#1a2540")
             ),
             yaxis=dict(
                 title=dict(text=f"<b>{primary}</b>", font=dict(color=PRIMARY_COLOR, size=12)),
-                tickfont=dict(color=PRIMARY_COLOR),
-                gridcolor="#e8e8e8",
+                tickfont=dict(color=PRIMARY_COLOR, size=11),
+                gridcolor="#e8edf5",
                 gridwidth=1,
                 griddash="dash",
                 zeroline=True,
-                zerolinecolor="#cccccc",
+                zerolinecolor="#c5d0e0",
                 showline=True,
-                linecolor="#cccccc"
+                linecolor="#c5d0e0",
+                range=yaxis_range
             ),
             yaxis2=dict(
                 title=dict(text=f"<b>{secondary}</b>", font=dict(color=SECONDARY_COLOR, size=12)),
-                tickfont=dict(color=SECONDARY_COLOR),
+                tickfont=dict(color=SECONDARY_COLOR, size=11),
                 overlaying="y", side="right",
-                gridcolor="#e8e8e8",
+                gridcolor="#e8edf5",
                 zeroline=False,
                 showline=True,
-                linecolor="#cccccc"
+                linecolor="#c5d0e0",
+                range=yaxis2_range
             ),
             xaxis=dict(
-                gridcolor="#e8e8e8",
+                gridcolor="#e8edf5",
                 gridwidth=1,
                 griddash="dash",
                 zeroline=False,
                 showline=True,
-                linecolor="#cccccc",
-                tickangle=-45
+                linecolor="#c5d0e0",
+                tickangle=-45,
+                tickfont=dict(color="#2a3a55", size=10)
             ),
-            margin=dict(l=60, r=70, t=55, b=80)
+            margin=dict(l=70, r=80, t=60, b=90)
         )
 
         st.plotly_chart(fig, use_container_width=True)
 
-        # ── ANALYTICS PANEL: LEFT stats tables | RIGHT regression KPIs ──
+        # ── ANALYTICS PANEL ──
         st.markdown('<div class="section-label" style="margin-top:4px;">VARIABLE STATISTICS & REGRESSION SUMMARY</div>', unsafe_allow_html=True)
 
-        # Pre-compute ALL dynamic values before building HTML strings
         x_min_s   = f"{x.min():.7g}"
         x_max_s   = f"{x.max():.7g}"
         x_mean_s  = f"{x.mean():.7g}"
@@ -691,11 +742,10 @@ if file:
 
         corr_impact   = "Positive" if corr_val > 0 else "Negative"
         corr_val_s    = f"{corr_val:.7f}"
-        corr_val_col  = "#f87171" if corr_val < 0 else "#34d399"
+        corr_val_col  = "#c0392b" if corr_val < 0 else "#1a7a4a"
 
-        slope_color   = "#34d399" if slope    >= 0   else "#f87171"
-        r2_color      = "#34d399" if r2       >= 0.7 else ("#fbbf24" if r2 >= 0.4 else "#f87171")
-        rel_color     = "#34d399" if corr_val >= 0   else "#f87171"
+        slope_color   = "#1a7a4a" if slope    >= 0   else "#c0392b"
+        r2_color      = "#1a7a4a" if r2       >= 0.7 else ("#d97706" if r2 >= 0.4 else "#c0392b")
 
         slope_s   = f"{slope:.3f}"
         r2_s      = f"{r2:.3f}"
@@ -706,98 +756,85 @@ if file:
         left_col, right_col = st.columns([2, 1])
 
         with left_col:
-            # ── Primary stats table ──
             st.markdown(
-                f'<div style="background:#111520;border:1px solid #1e2d45;border-radius:8px;overflow:hidden;margin-bottom:12px;">'
-                f'<div style="background:#1a2e4a;padding:8px 14px;font-family:Syne,sans-serif;font-size:0.72rem;'
-                f'font-weight:700;color:#38bdf8;letter-spacing:0.1em;text-transform:uppercase;">{primary}</div>'
+                f'<div style="background:#ffffff;border:1px solid #d0daea;border-radius:8px;overflow:hidden;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.04);">'
+                f'<div style="background:#e8f0fe;padding:8px 14px;font-family:Syne,sans-serif;font-size:0.72rem;'
+                f'font-weight:700;color:#1565c0;letter-spacing:0.1em;text-transform:uppercase;">{primary}</div>'
                 f'<table style="width:100%;border-collapse:collapse;font-family:DM Mono,monospace;font-size:0.78rem;">'
-                f'<thead><tr style="background:#161d2c;">'
-                f'<th style="padding:8px 14px;color:#4a6080;font-weight:500;text-align:left;border-bottom:1px solid #1e2d45;">Min</th>'
-                f'<th style="padding:8px 14px;color:#4a6080;font-weight:500;text-align:left;border-bottom:1px solid #1e2d45;">Max</th>'
-                f'<th style="padding:8px 14px;color:#4a6080;font-weight:500;text-align:left;border-bottom:1px solid #1e2d45;">Average</th>'
-                f'<th style="padding:8px 14px;color:#4a6080;font-weight:500;text-align:left;border-bottom:1px solid #1e2d45;">Standard Deviation</th>'
+                f'<thead><tr style="background:#f4f7fc;">'
+                f'<th style="padding:8px 14px;color:#4a5e80;font-weight:500;text-align:left;border-bottom:1px solid #d0daea;">Min</th>'
+                f'<th style="padding:8px 14px;color:#4a5e80;font-weight:500;text-align:left;border-bottom:1px solid #d0daea;">Max</th>'
+                f'<th style="padding:8px 14px;color:#4a5e80;font-weight:500;text-align:left;border-bottom:1px solid #d0daea;">Average</th>'
+                f'<th style="padding:8px 14px;color:#4a5e80;font-weight:500;text-align:left;border-bottom:1px solid #d0daea;">Standard Deviation</th>'
                 f'</tr></thead>'
                 f'<tbody><tr>'
-                f'<td style="padding:10px 14px;color:#e2eaf4;">{x_min_s}</td>'
-                f'<td style="padding:10px 14px;color:#e2eaf4;">{x_max_s}</td>'
-                f'<td style="padding:10px 14px;color:#e2eaf4;">{x_mean_s}</td>'
-                f'<td style="padding:10px 14px;color:#e2eaf4;">{x_std_s}</td>'
+                f'<td style="padding:10px 14px;color:#1a2540;">{x_min_s}</td>'
+                f'<td style="padding:10px 14px;color:#1a2540;">{x_max_s}</td>'
+                f'<td style="padding:10px 14px;color:#1a2540;">{x_mean_s}</td>'
+                f'<td style="padding:10px 14px;color:#1a2540;">{x_std_s}</td>'
                 f'</tr></tbody></table></div>',
                 unsafe_allow_html=True
             )
 
-            # ── Secondary stats table ──
             st.markdown(
-                f'<div style="background:#111520;border:1px solid #1e2d45;border-radius:8px;overflow:hidden;margin-bottom:12px;">'
-                f'<div style="background:#2a1a3a;padding:8px 14px;font-family:Syne,sans-serif;font-size:0.72rem;'
-                f'font-weight:700;color:#f472b6;letter-spacing:0.1em;text-transform:uppercase;">{secondary}</div>'
+                f'<div style="background:#ffffff;border:1px solid #d0daea;border-radius:8px;overflow:hidden;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.04);">'
+                f'<div style="background:#fce8e6;padding:8px 14px;font-family:Syne,sans-serif;font-size:0.72rem;'
+                f'font-weight:700;color:#c0392b;letter-spacing:0.1em;text-transform:uppercase;">{secondary}</div>'
                 f'<table style="width:100%;border-collapse:collapse;font-family:DM Mono,monospace;font-size:0.78rem;">'
-                f'<thead><tr style="background:#161d2c;">'
-                f'<th style="padding:8px 14px;color:#4a6080;font-weight:500;text-align:left;border-bottom:1px solid #1e2d45;">Min</th>'
-                f'<th style="padding:8px 14px;color:#4a6080;font-weight:500;text-align:left;border-bottom:1px solid #1e2d45;">Max</th>'
-                f'<th style="padding:8px 14px;color:#4a6080;font-weight:500;text-align:left;border-bottom:1px solid #1e2d45;">Average</th>'
-                f'<th style="padding:8px 14px;color:#4a6080;font-weight:500;text-align:left;border-bottom:1px solid #1e2d45;">Standard Deviation</th>'
+                f'<thead><tr style="background:#fdf4f4;">'
+                f'<th style="padding:8px 14px;color:#4a5e80;font-weight:500;text-align:left;border-bottom:1px solid #d0daea;">Min</th>'
+                f'<th style="padding:8px 14px;color:#4a5e80;font-weight:500;text-align:left;border-bottom:1px solid #d0daea;">Max</th>'
+                f'<th style="padding:8px 14px;color:#4a5e80;font-weight:500;text-align:left;border-bottom:1px solid #d0daea;">Average</th>'
+                f'<th style="padding:8px 14px;color:#4a5e80;font-weight:500;text-align:left;border-bottom:1px solid #d0daea;">Standard Deviation</th>'
                 f'</tr></thead>'
                 f'<tbody><tr>'
-                f'<td style="padding:10px 14px;color:#e2eaf4;">{y_min_s}</td>'
-                f'<td style="padding:10px 14px;color:#e2eaf4;">{y_max_s}</td>'
-                f'<td style="padding:10px 14px;color:#e2eaf4;">{y_mean_s}</td>'
-                f'<td style="padding:10px 14px;color:#e2eaf4;">{y_std_s}</td>'
+                f'<td style="padding:10px 14px;color:#1a2540;">{y_min_s}</td>'
+                f'<td style="padding:10px 14px;color:#1a2540;">{y_max_s}</td>'
+                f'<td style="padding:10px 14px;color:#1a2540;">{y_mean_s}</td>'
+                f'<td style="padding:10px 14px;color:#1a2540;">{y_std_s}</td>'
                 f'</tr></tbody></table></div>',
                 unsafe_allow_html=True
             )
 
-            # ── Correlation table ──
             st.markdown(
-                f'<div style="background:#111520;border:1px solid #1e2d45;border-radius:8px;overflow:hidden;">'
-                f'<div style="background:#162030;padding:8px 14px;font-family:Syne,sans-serif;font-size:0.72rem;'
-                f'font-weight:700;color:#fbbf24;letter-spacing:0.1em;text-transform:uppercase;">Correlation — Primary vs Secondary</div>'
+                f'<div style="background:#ffffff;border:1px solid #d0daea;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.04);">'
+                f'<div style="background:#fffbe6;padding:8px 14px;font-family:Syne,sans-serif;font-size:0.72rem;'
+                f'font-weight:700;color:#b45309;letter-spacing:0.1em;text-transform:uppercase;">Correlation — Primary vs Secondary</div>'
                 f'<table style="width:100%;border-collapse:collapse;font-family:DM Mono,monospace;font-size:0.78rem;">'
-                f'<thead><tr style="background:#161d2c;">'
-                f'<th style="padding:8px 14px;color:#4a6080;font-weight:500;text-align:left;border-bottom:1px solid #1e2d45;">Value</th>'
-                f'<th style="padding:8px 14px;color:#4a6080;font-weight:500;text-align:left;border-bottom:1px solid #1e2d45;">Impact</th>'
-                f'<th style="padding:8px 14px;color:#4a6080;font-weight:500;text-align:left;border-bottom:1px solid #1e2d45;">Level</th>'
+                f'<thead><tr style="background:#fdfaf0;">'
+                f'<th style="padding:8px 14px;color:#4a5e80;font-weight:500;text-align:left;border-bottom:1px solid #d0daea;">Value</th>'
+                f'<th style="padding:8px 14px;color:#4a5e80;font-weight:500;text-align:left;border-bottom:1px solid #d0daea;">Impact</th>'
+                f'<th style="padding:8px 14px;color:#4a5e80;font-weight:500;text-align:left;border-bottom:1px solid #d0daea;">Level</th>'
                 f'</tr></thead>'
                 f'<tbody><tr>'
                 f'<td style="padding:10px 14px;color:{corr_val_col};font-weight:700;">{corr_val_s}</td>'
-                f'<td style="padding:10px 14px;color:#e2eaf4;">{corr_impact}</td>'
-                f'<td style="padding:10px 14px;color:#e2eaf4;">{strength}</td>'
+                f'<td style="padding:10px 14px;color:#1a2540;">{corr_impact}</td>'
+                f'<td style="padding:10px 14px;color:#1a2540;">{strength}</td>'
                 f'</tr></tbody></table></div>',
                 unsafe_allow_html=True
             )
 
         with right_col:
-            # ── Regression KPI panel ──
             st.markdown(
-                f'<div style="background:#111520;border:1px solid #1e2d45;border-radius:8px;padding:0;">'
-                f'<div style="background:#162030;padding:10px 16px;font-family:Syne,sans-serif;font-size:0.72rem;'
-                f'font-weight:700;color:#fbbf24;letter-spacing:0.1em;text-transform:uppercase;">Regression Summary</div>'
+                f'<div style="background:#ffffff;border:1px solid #d0daea;border-radius:8px;padding:0;box-shadow:0 1px 4px rgba(0,0,0,0.05);">'
+                f'<div style="background:#fffbe6;padding:10px 16px;font-family:Syne,sans-serif;font-size:0.72rem;'
+                f'font-weight:700;color:#b45309;letter-spacing:0.1em;text-transform:uppercase;">Regression Summary</div>'
 
-                f'<div style="display:flex;justify-content:space-between;align-items:center;padding:13px 18px;border-bottom:1px solid #161d2c;">'
-                f'<span style="font-family:DM Mono,monospace;font-size:0.75rem;color:#6b80a0;letter-spacing:0.05em;">SLOPE</span>'
+                f'<div style="display:flex;justify-content:space-between;align-items:center;padding:13px 18px;border-bottom:1px solid #eef1f7;">'
+                f'<span style="font-family:DM Mono,monospace;font-size:0.75rem;color:#4a5e80;letter-spacing:0.05em;">SLOPE</span>'
                 f'<span style="font-family:Syne,sans-serif;font-size:1.15rem;font-weight:700;color:{slope_color};">{slope_s}</span>'
                 f'</div>'
 
-                f'<div style="display:flex;justify-content:space-between;align-items:center;padding:13px 18px;border-bottom:1px solid #161d2c;">'
-                f'<span style="font-family:DM Mono,monospace;font-size:0.75rem;color:#6b80a0;letter-spacing:0.05em;">R\u00b2</span>'
+                f'<div style="display:flex;justify-content:space-between;align-items:center;padding:13px 18px;border-bottom:1px solid #eef1f7;">'
+                f'<span style="font-family:DM Mono,monospace;font-size:0.75rem;color:#4a5e80;letter-spacing:0.05em;">R²</span>'
                 f'<span style="font-family:Syne,sans-serif;font-size:1.15rem;font-weight:700;color:{r2_color};">{r2_s}</span>'
                 f'</div>'
 
-                f'<div style="display:flex;justify-content:space-between;align-items:center;padding:13px 18px;border-bottom:1px solid #161d2c;">'
-                f'<span style="font-family:DM Mono,monospace;font-size:0.75rem;color:#6b80a0;letter-spacing:0.05em;">ADJ. R\u00b2</span>'
+                f'<div style="display:flex;justify-content:space-between;align-items:center;padding:13px 18px;">'
+                f'<span style="font-family:DM Mono,monospace;font-size:0.75rem;color:#4a5e80;letter-spacing:0.05em;">ADJ. R²</span>'
                 f'<span style="font-family:Syne,sans-serif;font-size:1.15rem;font-weight:700;color:{r2_color};">{adj_r2_s}</span>'
                 f'</div>'
 
-                f'<div style="display:flex;justify-content:space-between;align-items:center;padding:13px 18px;border-bottom:1px solid #161d2c;">'
-                f'<span style="font-family:DM Mono,monospace;font-size:0.75rem;color:#6b80a0;letter-spacing:0.05em;">STD ERROR</span>'
-                f'<span style="font-family:Syne,sans-serif;font-size:1.1rem;font-weight:700;color:#e2eaf4;">{stderr_s}</span>'
-                f'</div>'
-
-                f'<div style="padding:13px 18px;">'
-                f'<span style="font-family:DM Mono,monospace;font-size:0.75rem;color:#6b80a0;letter-spacing:0.05em;display:block;margin-bottom:8px;">RELATIONSHIP</span>'
-                f'<span style="font-family:Syne,sans-serif;font-size:0.95rem;font-weight:700;color:{rel_color};">{rel_s}</span>'
-                f'</div>'
                 f'</div>',
                 unsafe_allow_html=True
             )
@@ -840,16 +877,17 @@ else:
     <div style="
         text-align:center;
         padding: 80px 40px;
-        background: #111520;
-        border: 1px dashed #1e2d45;
+        background: #ffffff;
+        border: 1px dashed #c5d0e0;
         border-radius: 12px;
         margin-top: 40px;
+        box-shadow: 0 1px 6px rgba(0,0,0,0.05);
     ">
         <div style="font-size:3rem;margin-bottom:16px;">📂</div>
-        <div style="font-family:'Syne',sans-serif;font-size:1.1rem;color:#38bdf8;font-weight:700;letter-spacing:0.06em;">
+        <div style="font-family:'Syne',sans-serif;font-size:1.1rem;color:#1565c0;font-weight:700;letter-spacing:0.06em;">
             NO DATA LOADED
         </div>
-        <div style="font-size:0.78rem;color:#4a6080;margin-top:10px;line-height:1.7;">
+        <div style="font-size:0.78rem;color:#4a5e80;margin-top:10px;line-height:1.7;">
             Upload an Excel (.xlsx) file using the sidebar panel.<br>
             First column should be a Date column. Remaining columns should be numeric variables.
         </div>
