@@ -653,23 +653,20 @@ if file:
             st.dataframe(df_active, use_container_width=True, hide_index=True)
 
         elif new_choice == "BLANKED" and df_blanked is not None:
-            # Light green highlight for NaN cells (cells that were blanked)
+            # Light green highlight for NaN cells
             def _style_blanked(val):
                 return "background-color: #d4edda; color: #155724;" if pd.isna(val) else ""
-            styled = df_blanked.style.applymap(_style_blanked)
+            try:
+                # pandas >= 2.1 uses .map(), older uses .applymap()
+                styled = df_blanked.style.map(_style_blanked)
+            except AttributeError:
+                styled = df_blanked.style.applymap(_style_blanked)
             st.dataframe(styled, use_container_width=True, hide_index=True)
 
         else:
-            # Cleaned: highlight cells that were NaN in df_blanked but filled in df_clean — light blue
+            # Cleaned: highlight cells that were NaN in df_blanked but filled — light blue
             if df_blanked is not None:
                 _was_blank = df_blanked[numeric_cols].isna()
-                def _style_cleaned(val, row, col_name):
-                    try:
-                        if col_name in _was_blank.columns and _was_blank.at[row, col_name]:
-                            return "background-color: #cce5ff; color: #004085;"
-                    except Exception:
-                        pass
-                    return ""
                 def _apply_clean_style(df_s):
                     styles = pd.DataFrame("", index=df_s.index, columns=df_s.columns)
                     for col_name in df_s.columns:
@@ -756,7 +753,6 @@ if file:
         st.plotly_chart(fig_bar, use_container_width=True)
 
         
-
     # ══════════════════════════════
     # TAB 3 — ANALYSIS
     # ══════════════════════════════
