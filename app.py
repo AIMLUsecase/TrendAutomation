@@ -67,7 +67,7 @@ st.markdown("""
 
 with st.sidebar:
     st.markdown('<div class="section-label">DATA SOURCE</div>', unsafe_allow_html=True)
-    file = st.file_uploader("Upload Master Data File", type=["xlsx"], label_visibility="visible")
+    file = st.file_uploader("Upload Data", type=["xlsx"], label_visibility="visible")
     st.markdown("---")
     st.markdown('<div class="section-label">ABOUT</div>', unsafe_allow_html=True)
     st.markdown('<p style="font-size:.72rem;color:#4a5e80;line-height:1.6;">Upload an Excel file — first column: Date, remaining: numeric variables.</p>', unsafe_allow_html=True)
@@ -708,14 +708,31 @@ if file:
             st.dataframe(df_active, use_container_width=True, hide_index=True)
 
         elif new_choice == "FILTERED" and df_filtered is not None:
-            # Light green only on NaN (blanked) cells
+            # Compute which cells are outliers in df_filtered (non-blank, but outside sigma bounds)
+            _sigma_disp = int(st.session_state.get("sigma_n", 3))
+            _outlier_mask = pd.DataFrame(False, index=df_filtered.index, columns=numeric_cols)
+            for _c in numeric_cols:
+                _s = df_filtered[_c].dropna()
+                if len(_s) < 3:
+                    continue
+                _mu, _sv = _s.mean(), _s.std()
+                _lo, _hi = _mu - _sigma_disp * _sv, _mu + _sigma_disp * _sv
+                _outlier_mask[_c] = df_filtered[_c].notna() & \
+                                    ((df_filtered[_c] < _lo) | (df_filtered[_c] > _hi))
+
             _filtered_nan = df_filtered[numeric_cols].isna()
+
             def _apply_filtered_style(df_s):
                 styles = pd.DataFrame("", index=df_s.index, columns=df_s.columns)
                 for c in df_s.columns:
                     if c in _filtered_nan.columns:
-                        styles[c] = _filtered_nan[c].map(
-                            lambda x: "background-color:#d4edda;color:#155724;" if x else "")
+                        for idx in df_s.index:
+                            if _filtered_nan.at[idx, c]:
+                                # blanked cell (zero/null/non-numeric) → light green
+                                styles.at[idx, c] = "background-color:#d4edda;color:#155724;"
+                            elif _outlier_mask.at[idx, c]:
+                                # outlier cell (kept, not blanked) → light purple
+                                styles.at[idx, c] = "background-color:#e9d8fd;color:#44337a;"
                 return styles
             st.dataframe(
                 df_filtered.style.apply(_apply_filtered_style, axis=None),
@@ -834,24 +851,7 @@ if file:
             margin=dict(l=60,r=80,t=60,b=130), showlegend=False)
         st.plotly_chart(fig_bar, use_container_width=True)
 
-        st.markdown('<div class="section-label" style="margin-top:18px;">CLUSTERED CORRELATION</div>', unsafe_allow_html=True)
-        try:
-            linked = linkage(corr, method='ward')
-            order  = leaves_list(linked)
-            corr_c = corr.iloc[order, order]
-            fig_cl = go.Figure(data=go.Heatmap(
-                z=corr_c.values, x=corr_c.columns, y=corr_c.columns,
-                colorscale="RdYlGn", zmin=-1, zmax=1,
-                text=np.round(corr_c.values, 2),
-                texttemplate="%{text}", textfont={"size": 11, "color": "#1a2540"}))
-            fig_cl.update_layout(height=850, margin=dict(l=40,r=40,t=30,b=40),
-                paper_bgcolor="#f4f6fa", plot_bgcolor="#f4f6fa", font=dict(color="#1a2540"),
-                xaxis=dict(tickangle=-45, tickfont=dict(color="#1a2540")),
-                yaxis=dict(tickfont=dict(color="#1a2540")))
-            st.plotly_chart(fig_cl, use_container_width=True)
-            st.success("✅ Variables grouped by similarity")
-        except Exception:
-            st.warning("Clustering unavailable.")
+        
 
     # ══════════════════════════════
     # TAB 3 — ANALYSIS
@@ -969,14 +969,12 @@ if file:
                 <div class="change-row"><span class="change-key">Opening</span><span class="change-val neu">{px_s:.4g}</span></div>
                 <div class="change-row"><span class="change-key">Closing</span><span class="change-val neu">{px_e:.4g}</span></div>
                 <div class="change-row"><span class="change-key">Total % Change</span><span class="change-val {px_cl}">{px_cs}</span></div>
-                <div class="change-row"><span class="change-key">Avg Period Change</span><span class="change-val {px_al}">{px_as}</span></div>
             </div>
             <div class="change-card">
                 <div class="change-card-title">📌 {secondary}</div>
                 <div class="change-row"><span class="change-key">Opening</span><span class="change-val neu">{py_s:.4g}</span></div>
                 <div class="change-row"><span class="change-key">Closing</span><span class="change-val neu">{py_e:.4g}</span></div>
                 <div class="change-row"><span class="change-key">Total % Change</span><span class="change-val {py_cl}">{py_cs}</span></div>
-                <div class="change-row"><span class="change-key">Avg Period Change</span><span class="change-val {py_al}">{py_as}</span></div>
             </div>
         </div>""", unsafe_allow_html=True)
 
