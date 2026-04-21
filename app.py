@@ -67,7 +67,7 @@ st.markdown("""
 
 with st.sidebar:
     st.markdown('<div class="section-label">DATA SOURCE</div>', unsafe_allow_html=True)
-    file = st.file_uploader("Upload Data", type=["xlsx"], label_visibility="visible")
+    file = st.file_uploader("Upload Master Data Files", type=["xlsx"], label_visibility="visible")
     st.markdown("---")
     st.markdown('<div class="section-label">ABOUT</div>', unsafe_allow_html=True)
     st.markdown('<p style="font-size:.72rem;color:#4a5e80;line-height:1.6;">Upload an Excel file — first column: Date, remaining: numeric variables.</p>', unsafe_allow_html=True)
@@ -269,64 +269,110 @@ if file:
         df[col] = pd.to_numeric(df[col], errors="coerce")
     numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
 
-    # ── Reset preprocess state when a new file is uploaded ──
+    # ── Reset state on new file ──
     file_id = file.name + str(file.size)
     if st.session_state.get("_loaded_file_id") != file_id:
-        st.session_state["_loaded_file_id"]       = file_id
-        st.session_state["df_filtered"]           = None
-        st.session_state["df_filtered_out"]       = None
-        st.session_state["df_clean"]              = df.copy()
-        st.session_state["preprocess_applied"]    = False
-        st.session_state["outlier_report"]        = {}
-        st.session_state["run_preprocess"]        = False
-        st.session_state["active_dataset_choice"] = "RAW"
+        st.session_state.update({
+            "_loaded_file_id":       file_id,
+            "df2_filtered":          None,
+            "df3_filtered_out":      None,
+            "df4_clean":             None,
+            "preprocess_applied":    False,
+            "outlier_report":        {},
+            "run_preprocess":        False,
+            "active_dataset_choice": "DF1",
+        })
 
-    # ── Single fill strategy ──
+    # ── Fill strategy options ──
     FILL_OPTIONS = [
-        "Replace with 0",
-        "Replace with Column Mean",
-        "Replace with Previous 7-value Avg",
-        "Replace with Next 7-value Avg"
+        "1. Linear Interpolation  — fills gaps by drawing a straight line between known values",
+        "2. Time-Series Interpolation  — like linear but uses actual dates/time as the axis",
+        "3. Forward Fill (ffill)  — copies the last known value forward into each gap",
+        "4. Backward Fill (bfill)  — copies the next known value backward into each gap",
+        "5. Conditional / Grouped Interpolation  — fills using local window mean (prev 7 + next 7)",
+        "6. Spline / Polynomial Interpolation  — fits a smooth curve through known points to fill gaps",
+        "7. Column Mean  — replaces every blank with the column's average (excluding blanks)",
     ]
 
-    def apply_fill_col(series, strategy, original_series=None):
-        """
-        Fill NaN values in series.
-        - Column Mean: computed from non-NaN values only (excludes blanked/outlier cells)
-        - Prev/Next 7: uses 7 nearest FILLED (non-NaN) values, not 7 cell positions
-        """
-        s = series.copy()
-        if strategy == "Replace with 0":
-            s = s.fillna(0.0)
+    FILL_DESCRIPTIONS = {
+        FILL_OPTIONS[0]: "Draws a straight line between the two nearest known values on either side of a gap. Simple and accurate for smoothly changing data.",
+        FILL_OPTIONS[1]: "Same as linear but uses the actual timestamps. Best for unevenly spaced time-series where gaps of different durations should be treated proportionally.",
+        FILL_OPTIONS[2]: "Fills each blank with the last valid value before it. Good when data changes slowly and the most recent reading is still valid.",
+        FILL_OPTIONS[3]: "Fills each blank with the next valid value after it. Useful when you know future data and want to back-propagate it.",
+        FILL_OPTIONS[4]: "Fills each blank using the average of up to 7 real values before it and up to 7 after it. Balances local context from both sides.",
+        FILL_OPTIONS[5]: "Fits a smooth curve (cubic spline) through all known data points and reads off estimated values at the blank positions. Best for smooth, continuous measurements.",
+        FILL_OPTIONS[6]: "Replaces every blank with the overall column average. Simple baseline — use when no pattern is expected.",
+    }
 
-        elif strategy == "Replace with Column Mean":
-            # Mean of non-NaN values in the series (outliers already blanked, so excluded)
-            col_mean = s.mean()  # pandas mean() ignores NaN by default
+    def apply_fill_col(series, strategy, date_index=None):
+        """Apply selected fill strategy to a series. Returns filled series."""
+        s = series.copy().astype(float)
+        col_mean = float(np.nanmean(s)) if not np.all(np.isnan(s)) else np.nan
+
+        if strategy == FILL_OPTIONS[0]:
+            # 1. Linear interpolation
+            s = s.interpolate(method="linear", limit_direction="both")
             s = s.fillna(col_mean)
 
-        elif strategy == "Replace with Previous 7-value Avg":
-            # For each NaN, find the 7 most recent non-NaN values before it
-            arr = s.values.copy().astype(float)
+        elif strategy == FILL_OPTIONS[1]:
+            # 2. Time-series interpolation (uses index as time axis)
+            if date_index is not None:
+                try:
+                    tmp = pd.Series(s.values, index=date_index)
+                    tmp = tmp.interpolate(method="time", limit_direction="both")
+                    s   = pd.Series(tmp.values, index=s.index)
+                except Exception:
+                    s = s.interpolate(method="linear", limit_direction="both")
+            else:
+                s = s.interpolate(method="linear", limit_direction="both")
+            s = s.fillna(col_mean)
+
+        elif strategy == FILL_OPTIONS[2]:
+            # 3. Forward fill
+            s = s.ffill()
+            s = s.bfill()           # bfill handles leading NaNs
+            s = s.fillna(col_mean)
+
+        elif strategy == FILL_OPTIONS[3]:
+            # 4. Backward fill
+            s = s.bfill()
+            s = s.ffill()           # ffill handles trailing NaNs
+            s = s.fillna(col_mean)
+
+        elif strategy == FILL_OPTIONS[4]:
+            # 5. Conditional/grouped: local window mean (prev7 + next7 actual values)
+            arr = s.values.copy()
             for i in range(len(arr)):
-                if np.isnan(arr[i]):
-                    filled = arr[:i][~np.isnan(arr[:i])]
-                    last7  = filled[-7:] if len(filled) >= 1 else np.array([])
-                    arr[i] = np.mean(last7) if len(last7) > 0 else np.nan
+                if not np.isnan(arr[i]):
+                    continue
+                prev7 = arr[:i][~np.isnan(arr[:i])][-7:]
+                next7 = arr[i+1:][~np.isnan(arr[i+1:])][:7]
+                local = np.concatenate([prev7, next7])
+                arr[i] = np.mean(local) if len(local) > 0 else col_mean
             s = pd.Series(arr, index=s.index)
 
-        elif strategy == "Replace with Next 7-value Avg":
-            # For each NaN, find the 7 nearest non-NaN values after it
-            arr = s.values.copy().astype(float)
-            for i in range(len(arr) - 1, -1, -1):
-                if np.isnan(arr[i]):
-                    filled = arr[i+1:][~np.isnan(arr[i+1:])]
-                    next7  = filled[:7] if len(filled) >= 1 else np.array([])
-                    arr[i] = np.mean(next7) if len(next7) > 0 else np.nan
-            s = pd.Series(arr, index=s.index)
+        elif strategy == FILL_OPTIONS[5]:
+            # 6. Spline interpolation (cubic)
+            try:
+                from scipy.interpolate import CubicSpline
+                valid = s.dropna()
+                if len(valid) >= 4:
+                    cs   = CubicSpline(valid.index.tolist(), valid.values)
+                    mask = s.isna()
+                    s[mask] = cs(s.index[mask].tolist())
+                else:
+                    s = s.interpolate(method="linear", limit_direction="both")
+            except Exception:
+                s = s.interpolate(method="linear", limit_direction="both")
+            s = s.fillna(col_mean)
+
+        elif strategy == FILL_OPTIONS[6]:
+            # 7. Column mean
+            s = s.fillna(col_mean)
 
         return s
 
-    # ── Raw stats (always from df — zeros counted separately) ──
+    # ── Raw stats for display ──
     orig_rows    = len(df)
     orig_cols    = len(df.columns)
     orig_nulls   = int(df[numeric_cols].isnull().sum().sum())
@@ -338,71 +384,93 @@ if file:
         orig_zeros   += int((df[col] == 0).sum()) if col in numeric_cols else 0
     orig_valid = orig_rows * orig_cols - orig_nulls - orig_non_num
 
-    # ── Outlier counts per sigma (computed from df, ignoring zeros) ──
+    # ── Outlier counts for sigma cards (hybrid) ──
     outlier_counts_by_sigma = {}
     for sig in [1, 2, 3]:
         total_out = 0
         for col in numeric_cols:
-            s = df[col].replace(0, np.nan).dropna()   # exclude zeros from sigma calc
-            if len(s) < 3:
-                continue
+            s = df[col].replace(0, np.nan).dropna()
+            if len(s) < 3: continue
             mu, sv = s.mean(), s.std()
-            lo, hi = mu - sig * sv, mu + sig * sv
-            mask = df[col].notna() & (df[col] != 0) & ((df[col] < lo) | (df[col] > hi))
-            total_out += int(mask.sum())
+            cv = sv / abs(mu) if mu != 0 else float('inf')
+            if len(s) >= 10 and (sv == 0 or cv <= 1.5):
+                lo, hi = mu - sig * sv, mu + sig * sv
+            else:
+                q1, q3 = s.quantile(0.25), s.quantile(0.75)
+                iqr = q3 - q1
+                lo, hi = (s.max()*0.01, s.max()*10) if iqr == 0 else (q1-3*iqr, q3+3*iqr)
+            total_out += int((df[col].notna() & (df[col] != 0) & ((df[col]<lo)|(df[col]>hi))).sum())
         outlier_counts_by_sigma[sig] = total_out
 
-    # ── Run preprocessing only when button clicked ──
+    # ── Build the 4 dataframes when Apply is clicked ──
     if st.session_state.get("run_preprocess"):
         _sigma      = int(st.session_state.get("sigma_n", 3))
         _apply_out  = bool(st.session_state.get("apply_out", False))
-        _fill_strat = st.session_state.get("fill_strat", "Replace with Column Mean")
+        _fill_strat = st.session_state.get("fill_strat", FILL_OPTIONS[3])
 
-        # ── df_filtered: blank zeros + nulls + non-numeric ONLY (no outlier blanking) ──
-        _df_filtered = df.copy()
+        # DF1 — Raw (already df, just store reference key)
+        # DF2 — Filtered: zeros + nulls + non-numeric blanked, outliers KEPT
+        _df2 = df.copy()
         for col in numeric_cols:
-            _df_filtered.loc[_df_filtered[col] == 0, col] = np.nan
-        # non-numeric cells already NaN from pd.to_numeric coerce above
+            _df2.loc[_df2[col] == 0, col] = np.nan
+        # (non-numeric already NaN from pd.to_numeric coerce)
 
-        # ── df_filtered_out: df_filtered + outlier blanking ──
-        _df_filtered_out = _df_filtered.copy()
-        _outlier_report  = {}
+        # DF3 — Filtered + outliers: same as DF2 but also blank outliers
+        _df3 = _df2.copy()
+        _outlier_report = {}
         if _apply_out:
             for col in numeric_cols:
-                s = _df_filtered_out[col].dropna()
-                if len(s) < 3:
-                    continue
+                s_col = _df3[col]
+                s = s_col.dropna()
+                if len(s) < 3: continue
                 mu, sv = s.mean(), s.std()
-                lo, hi = mu - _sigma * sv, mu + _sigma * sv
-                out_mask = _df_filtered_out[col].notna() & \
-                           ((_df_filtered_out[col] < lo) | (_df_filtered_out[col] > hi))
-                _outlier_report[col] = {
-                    "blanked": int(out_mask.sum()),
-                    "lower": round(lo, 4), "upper": round(hi, 4),
-                    "mean": round(mu, 4), "std": round(sv, 4)
-                }
-                _df_filtered_out.loc[out_mask, col] = np.nan
+                cv = sv / abs(mu) if mu != 0 else float('inf')
+                if len(s) >= 10 and (sv == 0 or cv <= 1.5):
+                    lo, hi = mu - _sigma * sv, mu + _sigma * sv
+                    method = f"σ-rule ({_sigma}σ)"
+                else:
+                    q1, q3 = s.quantile(0.25), s.quantile(0.75)
+                    iqr = q3 - q1
+                    lo, hi = (s.max()*0.01, s.max()*10) if iqr == 0 else (q1-3*iqr, q3+3*iqr)
+                    method = "IQR practical rule"
+                out_mask = s_col.notna() & ((s_col < lo) | (s_col > hi))
+                if out_mask.any():
+                    _outlier_report[col] = {
+                        "blanked": int(out_mask.sum()), "lower": round(lo,4),
+                        "upper": round(hi,4), "mean": round(mu,4),
+                        "std": round(sv,4), "method": method,
+                    }
+                    _df3.loc[out_mask, col] = np.nan
 
-        # ── df_clean: fill ALL blanked cells (from df_filtered_out) with chosen strategy ──
-        _df_clean = _df_filtered_out.copy()
+        # DF4 — Cleaned: fill all blanked cells in DF3
+        _df4 = _df3.copy()
+        _date_idx = pd.to_datetime(_df3[date_col]) if date_col in _df3.columns else None
         for col in numeric_cols:
-            _df_clean[col] = apply_fill_col(_df_clean[col], _fill_strat)
+            _df4[col] = apply_fill_col(_df4[col], _fill_strat, date_index=_date_idx)
 
-        st.session_state["df_filtered"]        = _df_filtered
-        st.session_state["df_filtered_out"]    = _df_filtered_out
-        st.session_state["df_clean"]           = _df_clean
+        st.session_state["df2_filtered"]       = _df2.copy()
+        st.session_state["df3_filtered_out"]   = _df3.copy()
+        st.session_state["df4_clean"]          = _df4.copy()
         st.session_state["outlier_report"]     = _outlier_report
         st.session_state["preprocess_applied"] = True
         st.session_state["run_preprocess"]     = False
 
-    df_filtered        = st.session_state.get("df_filtered")
-    df_filtered_out    = st.session_state.get("df_filtered_out")
-    df_clean           = st.session_state["df_clean"]
-    outlier_report     = st.session_state.get("outlier_report", {})
+    # ── Load all 4 dataframes directly from session state ──
     preprocess_applied = st.session_state.get("preprocess_applied", False)
-    df_blanked         = df_filtered_out   # alias used in styling below
+    outlier_report     = st.session_state.get("outlier_report", {})
+    df1 = df.copy()                                          # DF1 always = raw df
+    df2 = st.session_state.get("df2_filtered")              # DF2: zeros/null/non-num blanked
+    df3 = st.session_state.get("df3_filtered_out")          # DF3: DF2 + outliers blanked
+    df4 = st.session_state.get("df4_clean")                 # DF4: DF3 filled
 
-    # ── Labeled columns helper ──
+    # ── Resolve df_active based on session state choice ──
+    _adc = st.session_state.get("active_dataset_choice", "DF1")
+    if   _adc == "DF2" and df2 is not None: df_active = df2.copy()
+    elif _adc == "DF3" and df3 is not None: df_active = df3.copy()
+    elif _adc == "DF4" and df4 is not None: df_active = df4.copy()
+    else:                                   df_active = df1.copy()
+
+    # ── Build labeled columns from df_active ──
     def make_labeled(source_df):
         num_cols = source_df.select_dtypes(include=np.number).columns.tolist()
         all_cols = list(source_df.columns)
@@ -410,25 +478,17 @@ if file:
         lbl2col  = {f"{all_cols.index(c)}-{c}": c for c in num_cols}
         return num_cols, labeled, lbl2col
 
-    clean_numeric_cols, clean_numeric_labeled, clean_label_to_col = make_labeled(df_clean)
-
-    # ── Active dataset (4 choices) ──
-    _adc = st.session_state.get("active_dataset_choice", "RAW")
-    if _adc == "FILTERED" and df_filtered is not None:
-        df_active = df_filtered.copy()
-    elif _adc == "FILTERED_OUT" and df_filtered_out is not None:
-        df_active = df_filtered_out.copy()
-    elif _adc == "CLEANED":
-        df_active = df_clean.copy()
-    else:
-        df_active = df.copy()
+    active_numeric_cols, active_numeric_labeled, active_label_to_col = make_labeled(df_active)
+    # keep clean_numeric_cols for guard checks
+    _ref = df4 if df4 is not None else df_active
+    clean_numeric_cols, _, _ = make_labeled(_ref)
 
     # ── Badge map ──
     _badge_map = {
-        "RAW":         ("#5a6e8a", "RAW DATA"),
-        "FILTERED":    ("#1a7a4a", "FILTERED DATA"),
-        "FILTERED_OUT":("#7c3aed", "FILTERED + OUTLIERS DATA"),
-        "CLEANED":     ("#1565c0", "CLEANED DATA"),
+        "DF1": ("#5a6e8a", "DF1 — RAW DATA"),
+        "DF2": ("#1a7a4a", "DF2 — FILTERED DATA"),
+        "DF3": ("#7c3aed", "DF3 — FILTERED + OUTLIERS"),
+        "DF4": ("#1565c0", "DF4 — CLEANED DATA"),
     }
     tab0, tab1, tab2, tab3, tab4 = st.tabs([
         "🗂️  Raw Data", "⚙️  Preprocess", "📊  Correlation", "📈  Analysis", "📑  Report"
@@ -520,10 +580,10 @@ if file:
         with col_after:
             st.markdown('<div class="section-label">✅ AFTER PREPROCESSING</div>', unsafe_allow_html=True)
             if preprocess_applied:
-                _cnc       = df_clean.select_dtypes(include=np.number).columns.tolist()
-                after_nulls       = int(df_clean[_cnc].isnull().sum().sum()) if _cnc else 0
-                after_rows        = len(df_clean)
-                after_cols        = len(df_clean.columns)
+                _cnc       = df4.select_dtypes(include=np.number).columns.tolist()
+                after_nulls       = int(df4[_cnc].isnull().sum().sum()) if _cnc else 0
+                after_rows        = len(df4)
+                after_cols        = len(df4.columns)
                 tot_out_blanked   = sum(v["blanked"] for v in outlier_report.values())
                 tot_blanked       = orig_nulls + orig_non_num + orig_zeros + tot_out_blanked
                 cells_filled      = tot_blanked - after_nulls
@@ -555,9 +615,10 @@ if file:
                     with st.expander("📊 View Outlier Detail Report"):
                         _s  = int(st.session_state.get("sigma_n", 3))
                         rr  = [{"Column": c,
+                                "Method": i.get("method","σ-rule"),
                                 "Mean": i["mean"], "Std Dev": i["std"],
-                                f"Lower (−{_s}σ)": i["lower"],
-                                f"Upper (+{_s}σ)": i["upper"],
+                                "Lower Bound": i["lower"],
+                                "Upper Bound": i["upper"],
                                 "Cells Blanked": i["blanked"]}
                                for c, i in outlier_report.items()]
                         st.dataframe(pd.DataFrame(rr), use_container_width=True, hide_index=True)
@@ -573,11 +634,15 @@ if file:
         # ════════════════════════════════════════
         # SIGMA SELECTION + OUTLIER COUNT CARDS
         # ════════════════════════════════════════
-        st.markdown('<div class="section-label">STEP 1 — OUTLIER TREATMENT (SIGMA RULE)</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-label">STEP 1 — OUTLIER DETECTION & BLANKING</div>', unsafe_allow_html=True)
         st.markdown(
-            '<div class="info-box"><b>What gets blanked:</b> Null cells · Non-numeric/text cells · '
-            'Zero values · Outliers (if enabled). '
-            'Select sigma level and enable outlier blanking if needed.</div>',
+            '<div class="info-box">'
+            '<b>Hybrid outlier detection:</b> For each column the system automatically selects the best method:<br>'
+            '• <b>Sigma rule</b> — used when data is continuous and well-distributed (CV ≤ 1.5, ≥10 values)<br>'
+            '• <b>IQR practical rule</b> — used for sparse, bimodal, or ON/OFF columns (e.g. flow = 0 or 300–500) '
+            'where sigma becomes misleadingly large and misses real anomalies like 0.652 in a 300–500 range<br>'
+            'Zero values are always blanked first, then outlier detection runs on the remaining values.'
+            '</div>',
             unsafe_allow_html=True)
 
         sig_col, chk_col = st.columns([3, 1])
@@ -609,26 +674,77 @@ if file:
         </div>""", unsafe_allow_html=True)
 
         # ════════════════════════════════════════
-        # SINGLE FILL STRATEGY (replaces Step2+Step3)
+        # DATA QUALITY CHECK: columns must have ≥50% data
         # ════════════════════════════════════════
-        st.markdown('<div class="section-label" style="margin-top:24px;">STEP 2 — FILL STRATEGY  <span style="font-size:.65rem;color:#5a6e8a;font-weight:400;">(applied to ALL blanked cells: null · non-numeric · zero · outlier)</span></div>', unsafe_allow_html=True)
-        st.markdown('<div class="info-box">Choose <b>one</b> fill method. It will be applied to every blanked cell across all numeric columns.</div>', unsafe_allow_html=True)
+        _fill_rate = {col: 1 - df[col].isna().sum() / max(len(df), 1) for col in numeric_cols}
+        _low_cols  = [c for c, r in _fill_rate.items() if r < 0.5]
+        _can_preprocess = len(_low_cols) == 0
 
-        st.radio(
+        if _low_cols:
+            st.markdown(
+                f'<div class="info-box" style="border-left-color:#c0392b;background:#fef2f2;">'
+                f'<b>⚠️ Data Quality Warning:</b> {len(_low_cols)} column(s) have less than 50% valid data. '
+                f'Preprocessing is disabled until these columns are either removed or have sufficient data.<br>'
+                f'<b>Columns below 50% fill rate:</b> '
+                f'{", ".join(f"{c} ({_fill_rate[c]*100:.0f}%)" for c in _low_cols[:10])}'
+                + ("..." if len(_low_cols) > 10 else "") +
+                f'</div>',
+                unsafe_allow_html=True)
+        else:
+            st.markdown(
+                '<div class="info-box" style="border-left-color:#1a7a4a;background:#f0fdf4;">'
+                '✅ All columns have ≥50% valid data. Preprocessing is enabled.'
+                '</div>', unsafe_allow_html=True)
+
+        # Show per-column fill rate table
+        with st.expander("📊 View column fill rate details"):
+            _fr_rows = [{"Column": c, "Valid Rows": int(_fill_rate[c]*len(df)),
+                         "Total Rows": len(df), "Fill Rate": f"{_fill_rate[c]*100:.1f}%",
+                         "Status": "✅ OK" if _fill_rate[c] >= 0.5 else "❌ Below 50%"}
+                        for c in numeric_cols]
+            st.dataframe(pd.DataFrame(_fr_rows), use_container_width=True, hide_index=True)
+
+        st.markdown("<hr style='margin:18px 0;border:none;border-top:1px solid #d0daea;'>", unsafe_allow_html=True)
+
+        # ════════════════════════════════════════
+        # STEP 2 — FILL STRATEGY (7 options)
+        # ════════════════════════════════════════
+        st.markdown('<div class="section-label" style="margin-top:4px;">STEP 2 — FILL STRATEGY  <span style="font-size:.65rem;color:#5a6e8a;font-weight:400;">(applied to all blanked cells: zeros · nulls · non-numeric · outliers)</span></div>', unsafe_allow_html=True)
+
+        _cur_fill_idx = FILL_OPTIONS.index(st.session_state.get("fill_strat", FILL_OPTIONS[0])) \
+                        if st.session_state.get("fill_strat") in FILL_OPTIONS else 0
+        _sel_fill = st.radio(
             "Fill Strategy",
             FILL_OPTIONS,
-            index=FILL_OPTIONS.index(st.session_state.get("fill_strat", "Replace with Column Mean")),
+            index=_cur_fill_idx,
             key="fill_strat",
             label_visibility="collapsed"
         )
+        # Show plain-English explanation of selected method
+        _desc = FILL_DESCRIPTIONS.get(_sel_fill, "")
+        if _desc:
+            st.markdown(
+                f'<div style="background:#f0f5ff;border-left:3px solid #1565c0;border-radius:6px;'
+                f'padding:10px 16px;font-size:.78rem;color:#2a3a55;margin-top:6px;line-height:1.6;">'
+                f'📌 <b>How this works:</b> {_desc}</div>',
+                unsafe_allow_html=True)
 
         # ════════════════════════════════════════
-        # APPLY BUTTON
+        # APPLY BUTTON (disabled if <50% data in any column)
         # ════════════════════════════════════════
         st.markdown("<div style='margin-top:24px;'>", unsafe_allow_html=True)
-        if st.button("⚙️  Apply Preprocessing", use_container_width=True, key="btn_preprocess"):
-            st.session_state["run_preprocess"] = True
-            st.rerun()
+        if _can_preprocess:
+            if st.button("⚙️  Apply Preprocessing", use_container_width=True, key="btn_preprocess"):
+                st.session_state["run_preprocess"] = True
+                st.rerun()
+        else:
+            st.markdown(
+                '<div style="opacity:0.5;cursor:not-allowed;">'
+                '<div style="background:#9ca3af;color:#fff;border-radius:8px;padding:10px 24px;'
+                'font-family:Syne,sans-serif;font-size:.78rem;font-weight:600;letter-spacing:.08em;'
+                'text-align:center;">⚙️  Apply Preprocessing (Disabled — fix column data first)</div>'
+                '</div>',
+                unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
         if preprocess_applied:
             st.success("✅ Preprocessing applied — scroll up to see the After card results.")
@@ -642,45 +758,34 @@ if file:
         st.markdown('<div class="info-box">Select which version of the data all other tabs will use.</div>', unsafe_allow_html=True)
 
         DATASET_OPTIONS = [
-            "📋  RAW DATA  (original uploaded data — no changes)",
-            "🟢  FILTERED DATA  (zeros + nulls + non-numeric set to blank, outliers kept)",
-            "🟣  FILTERED + OUTLIERS  (zeros + nulls + non-numeric + outliers set to blank)",
-            "🔵  CLEANED DATA  (all blanked cells filled as per selected criteria)",
+            "📋  DF1 — RAW DATA  (original uploaded data, no changes)",
+            "🟢  DF2 — FILTERED DATA  (zeros + nulls + non-numeric blanked, outliers kept)",
+            "🟣  DF3 — FILTERED + OUTLIERS  (zeros + nulls + non-numeric + outliers blanked)",
+            "🔵  DF4 — CLEANED DATA  (all blanked cells filled per selected strategy)",
         ]
-        _opt_map   = {
-            DATASET_OPTIONS[0]: "RAW",
-            DATASET_OPTIONS[1]: "FILTERED",
-            DATASET_OPTIONS[2]: "FILTERED_OUT",
-            DATASET_OPTIONS[3]: "CLEANED",
-        }
-        _key_list  = ["RAW","FILTERED","FILTERED_OUT","CLEANED"]
-        _cur_adc   = st.session_state.get("active_dataset_choice", "RAW")
-        _cur_idx   = _key_list.index(_cur_adc) if _cur_adc in _key_list else 0
+        _opt_map  = {DATASET_OPTIONS[0]:"DF1", DATASET_OPTIONS[1]:"DF2",
+                     DATASET_OPTIONS[2]:"DF3", DATASET_OPTIONS[3]:"DF4"}
+        _key_list = ["DF1","DF2","DF3","DF4"]
+        _cur_adc  = st.session_state.get("active_dataset_choice","DF1")
+        _cur_idx  = _key_list.index(_cur_adc) if _cur_adc in _key_list else 0
 
         sel_opt    = st.radio("Active Dataset", DATASET_OPTIONS, index=_cur_idx, key="dataset_choice_radio")
         new_choice = _opt_map[sel_opt]
-        if new_choice in ("FILTERED","FILTERED_OUT","CLEANED") and not preprocess_applied:
-            st.warning("⚠️ Available only after clicking Apply Preprocessing. Showing Raw Data instead.")
-            new_choice = "RAW"
-        st.session_state["active_dataset_choice"] = new_choice
+        if new_choice in ("DF2","DF3","DF4") and not preprocess_applied:
+            st.warning("⚠️ Available only after clicking Apply Preprocessing. Showing DF1 (Raw) instead.")
+            new_choice = "DF1"
 
-        # Re-resolve df_active after choice confirmed
-        if new_choice == "FILTERED" and df_filtered is not None:
-            df_active = df_filtered.copy()
-        elif new_choice == "FILTERED_OUT" and df_filtered_out is not None:
-            df_active = df_filtered_out.copy()
-        elif new_choice == "CLEANED":
-            df_active = df_clean.copy()
-        else:
-            df_active = df.copy()
+        if new_choice != st.session_state.get("active_dataset_choice","DF1"):
+            st.session_state["active_dataset_choice"] = new_choice
+            st.rerun()
 
-        # Badge + label
-        _bc, _bt = _badge_map.get(new_choice, ("#5a6e8a","RAW DATA"))
+        new_choice = st.session_state.get("active_dataset_choice","DF1")
+        _bc, _bt   = _badge_map.get(new_choice, ("#5a6e8a","DF1 — RAW DATA"))
         _preview_label = {
-            "RAW":          "RAW DATA PREVIEW",
-            "FILTERED":     "FILTERED DATA PREVIEW  (blanked cells: zero / null / non-numeric — shown in 🟢 light green)",
-            "FILTERED_OUT": "FILTERED + OUTLIERS PREVIEW  (blanked cells: zero / null / non-numeric / outlier — shown in 🟣 light purple)",
-            "CLEANED":      "CLEANED DATA PREVIEW  (filled cells shown in 🔵 light blue)",
+            "DF1": "DF1 — RAW DATA PREVIEW",
+            "DF2": "DF2 — FILTERED DATA PREVIEW  (🟢 green = blanked zero/null/non-numeric  |  🟣 purple = outlier cells kept)",
+            "DF3": "DF3 — FILTERED+OUTLIERS PREVIEW  (🟢 green = zero/null/non-num  |  🟣 purple = outlier-blanked)",
+            "DF4": "DF4 — CLEANED DATA PREVIEW  (🔵 blue = cells that were filled)",
         }.get(new_choice, "DATA PREVIEW")
 
         st.markdown(
@@ -690,108 +795,84 @@ if file:
             unsafe_allow_html=True)
         st.markdown(f'<div class="section-label" style="margin-top:4px;">{_preview_label}</div>', unsafe_allow_html=True)
 
-        # ── Coloured table display ──
-        def _safe_style(styler_obj, fn, axis=None):
-            """Apply styler with map/applymap/apply compatibility across pandas versions."""
-            try:
-                if axis is None:
-                    return styler_obj.map(fn)
-                else:
-                    return styler_obj.apply(fn, axis=axis)
-            except AttributeError:
-                if axis is None:
-                    return styler_obj.applymap(fn)
-                else:
-                    return styler_obj.apply(fn, axis=axis)
+        def _render_styled(source_df, style_fn):
+            # Replace NaN/None with empty string BEFORE styling
+            clean_df = source_df.copy().fillna("")
 
-        if new_choice == "RAW":
-            st.dataframe(df_active, use_container_width=True, hide_index=True)
+            styled = clean_df.style.apply(style_fn, axis=None)
 
-        elif new_choice == "FILTERED" and df_filtered is not None:
-            # Compute which cells are outliers in df_filtered (non-blank, but outside sigma bounds)
-            _sigma_disp = int(st.session_state.get("sigma_n", 3))
-            _outlier_mask = pd.DataFrame(False, index=df_filtered.index, columns=numeric_cols)
+            st.dataframe(styled, use_container_width=True, hide_index=True)
+
+        if new_choice == "DF1":
+            st.dataframe(df_active.style.format(na_rep=""), use_container_width=True, hide_index=True)
+
+        elif new_choice == "DF2" and df2 is not None:
+            _sigma_disp   = int(st.session_state.get("sigma_n", 3))
+            _outlier_mask = pd.DataFrame(False, index=df2.index, columns=numeric_cols)
             for _c in numeric_cols:
-                _s = df_filtered[_c].dropna()
-                if len(_s) < 3:
-                    continue
+                _s = df2[_c].dropna()
+                if len(_s) < 3: continue
                 _mu, _sv = _s.mean(), _s.std()
-                _lo, _hi = _mu - _sigma_disp * _sv, _mu + _sigma_disp * _sv
-                _outlier_mask[_c] = df_filtered[_c].notna() & \
-                                    ((df_filtered[_c] < _lo) | (df_filtered[_c] > _hi))
-
-            _filtered_nan = df_filtered[numeric_cols].isna()
-
-            def _apply_filtered_style(df_s):
+                _cv = _sv / abs(_mu) if _mu != 0 else float("inf")
+                if len(_s) >= 10 and (_sv == 0 or _cv <= 1.5):
+                    _lo, _hi = _mu - _sigma_disp * _sv, _mu + _sigma_disp * _sv
+                else:
+                    _q1, _q3 = _s.quantile(0.25), _s.quantile(0.75)
+                    _iqr = _q3 - _q1
+                    _lo, _hi = (_s.max()*0.01, _s.max()*10) if _iqr==0 else (_q1-3*_iqr, _q3+3*_iqr)
+                _outlier_mask[_c] = df2[_c].notna() & ((df2[_c] < _lo) | (df2[_c] > _hi))
+            _df2_nan = df2[numeric_cols].isna()
+            def _style_df2(df_s):
                 styles = pd.DataFrame("", index=df_s.index, columns=df_s.columns)
                 for c in df_s.columns:
-                    if c in _filtered_nan.columns:
+                    if c in _df2_nan.columns:
                         for idx in df_s.index:
-                            if _filtered_nan.at[idx, c]:
-                                # blanked cell (zero/null/non-numeric) → light green
+                            if _df2_nan.at[idx, c]:
                                 styles.at[idx, c] = "background-color:#d4edda;color:#155724;"
                             elif _outlier_mask.at[idx, c]:
-                                # outlier cell (kept, not blanked) → light purple
                                 styles.at[idx, c] = "background-color:#e9d8fd;color:#44337a;"
                 return styles
-            st.dataframe(
-                df_filtered.style.apply(_apply_filtered_style, axis=None),
-                use_container_width=True, hide_index=True)
+            _render_styled(df2, _style_df2)
 
-        elif new_choice == "FILTERED_OUT" and df_filtered_out is not None:
-            # Light green for filtered (zero/null/non-num) cells
-            # Light purple for additional outlier-blanked cells
-            _filt_nan   = df_filtered[numeric_cols].isna()     if df_filtered is not None else pd.DataFrame()
-            _fout_nan   = df_filtered_out[numeric_cols].isna()
-            def _apply_fout_style(df_s):
+        elif new_choice == "DF3" and df3 is not None:
+            _df2_nan = df2[numeric_cols].isna() if df2 is not None else                        pd.DataFrame(False, index=df3.index, columns=numeric_cols)
+            _df3_nan = df3[numeric_cols].isna()
+            def _style_df3(df_s):
                 styles = pd.DataFrame("", index=df_s.index, columns=df_s.columns)
                 for c in df_s.columns:
-                    if c in _fout_nan.columns:
+                    if c in _df3_nan.columns:
                         for idx in df_s.index:
-                            is_fout = _fout_nan.at[idx, c] if c in _fout_nan.columns else False
-                            is_filt = _filt_nan.at[idx, c] if c in _filt_nan.columns else False
-                            if is_fout and not is_filt:
-                                # outlier-blanked → light purple
+                            is_df3 = _df3_nan.at[idx, c]
+                            is_df2 = _df2_nan.at[idx, c] if c in _df2_nan.columns else False
+                            if is_df3 and not is_df2:
                                 styles.at[idx, c] = "background-color:#e9d8fd;color:#44337a;"
-                            elif is_fout and is_filt:
-                                # zero/null/non-num → light green
+                            elif is_df3 and is_df2:
                                 styles.at[idx, c] = "background-color:#d4edda;color:#155724;"
                 return styles
-            st.dataframe(
-                df_filtered_out.style.apply(_apply_fout_style, axis=None),
-                use_container_width=True, hide_index=True)
+            _render_styled(df3, _style_df3)
+
+        elif new_choice == "DF4" and df4 is not None:
+            _was_blank = df3[numeric_cols].isna() if df3 is not None else                          pd.DataFrame(False, index=df4.index, columns=numeric_cols)
+            def _style_df4(df_s):
+                styles = pd.DataFrame("", index=df_s.index, columns=df_s.columns)
+                for c in df_s.columns:
+                    if c in _was_blank.columns:
+                        styles[c] = _was_blank[c].map(
+                            lambda x: "background-color:#cce5ff;color:#004085;" if x else "")
+                return styles
+            _render_styled(df4, _style_df4)
 
         else:
-            # CLEANED — light blue on cells that were blanked (in df_filtered_out) but now filled
-            if df_filtered_out is not None:
-                _was_blank = df_filtered_out[numeric_cols].isna()
-                def _apply_clean_style(df_s):
-                    styles = pd.DataFrame("", index=df_s.index, columns=df_s.columns)
-                    for c in df_s.columns:
-                        if c in _was_blank.columns:
-                            styles[c] = _was_blank[c].map(
-                                lambda x: "background-color:#cce5ff;color:#004085;" if x else "")
-                    return styles
-                st.dataframe(
-                    df_clean.style.apply(_apply_clean_style, axis=None),
-                    use_container_width=True, hide_index=True)
-            else:
-                st.dataframe(df_clean, use_container_width=True, hide_index=True)
+            st.dataframe(df_active.style.format(na_rep=""), use_container_width=True, hide_index=True)
 
     # ══════════════════════════════
     # TAB 2 — CORRELATION
     # ══════════════════════════════
     with tab2:
         st.markdown('<div class="section-label">CORRELATION INTELLIGENCE</div>', unsafe_allow_html=True)
-        if len(clean_numeric_cols) < 2:
-            st.warning("Not enough numeric columns in cleaned data.")
+        if len(active_numeric_cols) < 2:
+            st.warning("Not enough numeric columns in the active dataset.")
             st.stop()
-
-        active_num_cols = df_active.select_dtypes(include=np.number).columns.tolist()
-        active_all_cols = list(df_active.columns)
-        def active_labeled(c): return f"{active_all_cols.index(c)}-{c}"
-        active_numeric_labeled = [active_labeled(c) for c in active_num_cols]
-        active_label_to_col    = {active_labeled(c): c for c in active_num_cols}
 
         _adc2 = st.session_state.get("active_dataset_choice", "RAW")
         _bc, _bt = _badge_map.get(_adc2, ("#5a6e8a","RAW DATA"))
@@ -800,7 +881,7 @@ if file:
             f'font-weight:700;letter-spacing:.12em;padding:6px 14px;border-radius:6px;display:inline-block;margin-bottom:12px;">'
             f'USING: {_bt}</div>', unsafe_allow_html=True)
 
-        corr = df_active[active_num_cols].corr()
+        corr = df_active[active_numeric_cols].corr()
 
         st.markdown('<div class="section-label" style="margin-top:6px;">FULL CORRELATION MATRIX</div>', unsafe_allow_html=True)
         fig_full = go.Figure(data=go.Heatmap(
@@ -821,7 +902,7 @@ if file:
             target_lbl = st.selectbox("Select Target Variable", active_numeric_labeled, key="corr_target")
             target_col = active_label_to_col[target_lbl]
         with bc2:
-            top_n = st.slider("Top N", 5, len(active_num_cols), min(15, len(active_num_cols)), key="top_n_corr")
+            top_n = st.slider("Top N", 5, len(active_numeric_cols), min(15, len(active_numeric_cols)), key="top_n_corr")
 
         corr_series = corr[target_col].drop(labels=[target_col])
         corr_top    = corr_series.abs().sort_values(ascending=False).head(top_n)
@@ -851,29 +932,33 @@ if file:
             margin=dict(l=60,r=80,t=60,b=130), showlegend=False)
         st.plotly_chart(fig_bar, use_container_width=True)
 
-        
-
+ 
     # ══════════════════════════════
     # TAB 3 — ANALYSIS
     # ══════════════════════════════
     with tab3:
         st.markdown('<div class="section-label">DYNAMIC VARIABLE ANALYSIS</div>', unsafe_allow_html=True)
-        if len(clean_numeric_cols) < 2:
-            st.warning("Not enough numeric columns in cleaned data.")
-            st.stop()
 
-        active_num_cols_a = df_active.select_dtypes(include=np.number).columns.tolist()
-        active_all_cols_a = list(df_active.columns)
-        def active_labeled_a(c): return f"{active_all_cols_a.index(c)}-{c}"
-        active_numeric_labeled_a = [active_labeled_a(c) for c in active_num_cols_a]
-        active_label_to_col_a    = {active_labeled_a(c): c for c in active_num_cols_a}
-
-        _adc3 = st.session_state.get("active_dataset_choice", "RAW")
-        _bc3, _bt3 = _badge_map.get(_adc3, ("#1a7a4a","CLEANED DATA"))
+        # ── DEBUG: confirm active dataset ──
+        _adc_dbg = st.session_state.get("active_dataset_choice", "DF1")
+        _bc_dbg, _bt_dbg = _badge_map.get(_adc_dbg, ("#5a6e8a","DF1 — RAW DATA"))
         st.markdown(
-            f'<div style="background:{_bc3};color:#fff;font-family:Syne,sans-serif;font-size:.7rem;'
-            f'font-weight:700;letter-spacing:.12em;padding:6px 14px;border-radius:6px;display:inline-block;margin-bottom:12px;">'
-            f'USING: {_bt3}</div>', unsafe_allow_html=True)
+            f'<div style="background:{_bc_dbg};color:#fff;font-family:Syne,sans-serif;font-size:.7rem;'
+            f'font-weight:700;letter-spacing:.12em;padding:6px 14px;border-radius:6px;display:inline-block;margin-bottom:8px;">'
+            f'USING: {_bt_dbg}</div>', unsafe_allow_html=True)
+
+        with st.expander("🔍 Debug — active dataset info"):
+            st.write(f"active_dataset_choice = **{_adc_dbg}**")
+            st.write(f"df_active shape = {df_active.shape}")
+            st.write(f"df1 nulls in numeric = {int(df1[numeric_cols].isnull().sum().sum())}")
+            if df2 is not None: st.write(f"df2 nulls in numeric = {int(df2[numeric_cols].isnull().sum().sum())}")
+            if df3 is not None: st.write(f"df3 nulls in numeric = {int(df3[numeric_cols].isnull().sum().sum())}")
+            if df4 is not None: st.write(f"df4 nulls in numeric = {int(df4[numeric_cols].isnull().sum().sum())}")
+            st.write(f"df_active nulls in numeric = {int(df_active[numeric_cols].isnull().sum().sum())}")
+            st.write(f"preprocess_applied = {preprocess_applied}")
+            st.write("**Null counts per column in df_active (top 20 by null count):**")
+            _null_series = df_active[numeric_cols].isnull().sum().sort_values(ascending=False).head(20)
+            st.dataframe(_null_series.reset_index().rename(columns={"index":"Column", 0:"Nulls"}), hide_index=True)
 
         date_list = sorted(df_active[date_col].dt.date.unique())
 
@@ -881,11 +966,11 @@ if file:
         with r1: start_date = st.selectbox("Start Date", date_list, key="sd")
         with r2: end_date   = st.selectbox("End Date", date_list, index=len(date_list)-1, key="ed")
         with r3:
-            prim_lbl = st.selectbox("Primary Variable", active_numeric_labeled_a, key="pv")
-            primary  = active_label_to_col_a[prim_lbl]
+            prim_lbl = st.selectbox("Primary Variable", active_numeric_labeled, key="pv")
+            primary  = active_label_to_col[prim_lbl]
         with r4:
-            sec_lbl   = st.selectbox("Secondary Variable", active_numeric_labeled_a, index=min(1, len(active_numeric_labeled_a)-1), key="sv")
-            secondary = active_label_to_col_a[sec_lbl]
+            sec_lbl   = st.selectbox("Secondary Variable", active_numeric_labeled, index=min(1, len(active_numeric_labeled)-1), key="sv")
+            secondary = active_label_to_col[sec_lbl]
 
         # Chart type + trendline row
         ct1, ct2, ct3, ct4 = st.columns(4)
@@ -908,11 +993,23 @@ if file:
             st.error("Start Date cannot be after End Date.")
             st.stop()
 
-        df_f = df_active[(df_active[date_col].dt.date >= start_date) & (df_active[date_col].dt.date <= end_date)]
-        if len(df_f) < 2:
+        df_live=df_active
+        st.write(df_live)
+        df_f = df_live[(df_live[date_col].dt.date >= start_date) & (df_live[date_col].dt.date <= end_date)]
+        if len(df_live) < 2:
             st.warning("Not enough data in selected range.")
             st.stop()
 
+        df_live[date_col] = pd.to_datetime(df_live[date_col], errors='coerce')
+
+        df_f = df_live[
+        (df_live[date_col] >= pd.to_datetime(start_date)) &
+        (df_live[date_col] <= pd.to_datetime(end_date))
+        ]
+
+        df_f = df_f.dropna(subset=[date_col, primary, secondary])
+
+        st.write(f"df_active shape = {df_f.shape}")
         x = df_f[primary]
         y = df_f[secondary]
 
@@ -1116,17 +1213,11 @@ if file:
         st.markdown('<div class="section-label">MULTI-SERIES REPORT BUILDER</div>', unsafe_allow_html=True)
         st.markdown('<div class="info-box">Select one primary and multiple secondary variables. Configure each chart individually. Click <b>Generate</b> to preview, then <b>Download HTML Report</b> to save — open in browser and Print → Save as PDF.</div>', unsafe_allow_html=True)
 
-        if len(clean_numeric_cols) < 2:
-            st.warning("Not enough numeric columns in cleaned data.")
+        if len(active_numeric_cols) < 2:
+            st.warning("Not enough numeric columns in the active dataset.")
         else:
-            active_num_cols_r = df_active.select_dtypes(include=np.number).columns.tolist()
-            active_all_cols_r = list(df_active.columns)
-            def active_labeled_r(c): return f"{active_all_cols_r.index(c)}-{c}"
-            active_numeric_labeled_r = [active_labeled_r(c) for c in active_num_cols_r]
-            active_label_to_col_r    = {active_labeled_r(c): c for c in active_num_cols_r}
-
             _adc4 = st.session_state.get("active_dataset_choice", "RAW")
-            _bc4, _bt4 = _badge_map.get(_adc4, ("#1a7a4a","CLEANED DATA"))
+            _bc4, _bt4 = _badge_map.get(_adc4, ("#5a6e8a","RAW DATA"))
             st.markdown(
                 f'<div style="background:{_bc4};color:#fff;font-family:Syne,sans-serif;font-size:.7rem;'
                 f'font-weight:700;letter-spacing:.12em;padding:6px 14px;border-radius:6px;display:inline-block;margin-bottom:12px;">'
@@ -1143,11 +1234,11 @@ if file:
             else:
                 rpp1, rpp2 = st.columns([1, 2])
                 with rpp1:
-                    r_prim_lbl = st.selectbox("Primary Variable", active_numeric_labeled_r, key="r_pv")
-                    r_primary  = active_label_to_col_r[r_prim_lbl]
+                    r_prim_lbl = st.selectbox("Primary Variable", active_numeric_labeled, key="r_pv")
+                    r_primary  = active_label_to_col[r_prim_lbl]
                 with rpp2:
-                    r_sec_lbls    = st.multiselect("Secondary Variables (one chart each)", active_numeric_labeled_r, key="r_svs")
-                    r_secondaries = [active_label_to_col_r[l] for l in r_sec_lbls]
+                    r_sec_lbls    = st.multiselect("Secondary Variables (one chart each)", active_numeric_labeled, key="r_svs")
+                    r_secondaries = [active_label_to_col[l] for l in r_sec_lbls]
 
                 if not r_secondaries:
                     st.info("Select at least one secondary variable to configure charts.")
