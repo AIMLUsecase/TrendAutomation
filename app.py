@@ -17,7 +17,7 @@ st.markdown("""
 html,body,[class*="css"]{font-family:'DM Mono',monospace;background:#f4f6fa;color:#1a2540;}
 #MainMenu,footer,header{visibility:hidden;}
 .block-container{padding:2rem 2.5rem;max-width:100%;}
-.dash-header{background:linear-gradient(135deg,#1a3a6e,#1e4d8c 60%,#1565c0);border:1px solid #1a5cb5;border-radius:12px;padding:28px 40px;margin-bottom:28px;position:relative;overflow:hidden;}
+.dash-header{background:linear-gradient(135deg,#2d7a4f,#3a9e65 60%,#4caf7d);border:1px solid #2d7a4f;border-radius:12px;padding:28px 40px;margin-bottom:28px;position:relative;overflow:hidden;}
 .dash-header::before{content:"";position:absolute;top:-40px;right:-40px;width:220px;height:220px;background:radial-gradient(circle,rgba(255,255,255,.10),transparent 70%);border-radius:50%;}
 .dash-title{font-family:'Syne',sans-serif;font-size:1.75rem;font-weight:800;color:#fff;letter-spacing:.04em;margin:0;}
 .dash-subtitle{font-family:'DM Mono',monospace;font-size:.75rem;color:#90caf9;letter-spacing:.12em;text-transform:uppercase;margin-top:6px;}
@@ -52,6 +52,9 @@ html,body,[class*="css"]{font-family:'DM Mono',monospace;background:#f4f6fa;colo
 .stSelectbox label,.stSlider label{font-size:.7rem!important;color:#4a5e80!important;letter-spacing:.08em!important;text-transform:uppercase!important;}
 .stDataFrame{border:1px solid #d0daea;border-radius:8px;}
 [data-testid="stFileUploaderDropzoneInstructions"] button{background:linear-gradient(135deg,#1565c0,#0d47a1);color:#fff;border:none;border-radius:8px;font-family:'Syne',sans-serif;font-weight:600;letter-spacing:.08em;padding:10px 24px;}
+[data-testid="stFileUploaderDropzoneInstructions"] small{display:none !important;}
+[data-testid="stFileUploaderDropzone"] small{display:none !important;}
+[data-testid="stFileUploaderDropzoneInstructions"] span:not([data-testid]){display:none !important;}
 .stButton>button{background:linear-gradient(135deg,#1565c0,#0d47a1);color:#fff;border:none;border-radius:8px;font-family:'Syne',sans-serif;font-size:.78rem;font-weight:600;letter-spacing:.08em;padding:10px 24px;}
 .stButton>button:hover{opacity:.85;}
 .info-box{background:#e8f4fd;border:1px solid #90caf9;border-left:4px solid #1565c0;border-radius:8px;padding:12px 16px;font-size:.78rem;color:#1a2540;line-height:1.6;margin-bottom:14px;}
@@ -947,19 +950,7 @@ if file:
             f'font-weight:700;letter-spacing:.12em;padding:6px 14px;border-radius:6px;display:inline-block;margin-bottom:8px;">'
             f'USING: {_bt_dbg}</div>', unsafe_allow_html=True)
 
-        with st.expander("🔍 Debug — active dataset info"):
-            st.write(f"active_dataset_choice = **{_adc_dbg}**")
-            st.write(f"df_active shape = {df_active.shape}")
-            st.write(f"df1 nulls in numeric = {int(df1[numeric_cols].isnull().sum().sum())}")
-            if df2 is not None: st.write(f"df2 nulls in numeric = {int(df2[numeric_cols].isnull().sum().sum())}")
-            if df3 is not None: st.write(f"df3 nulls in numeric = {int(df3[numeric_cols].isnull().sum().sum())}")
-            if df4 is not None: st.write(f"df4 nulls in numeric = {int(df4[numeric_cols].isnull().sum().sum())}")
-            st.write(f"df_active nulls in numeric = {int(df_active[numeric_cols].isnull().sum().sum())}")
-            st.write(f"preprocess_applied = {preprocess_applied}")
-            st.write("**Null counts per column in df_active (top 20 by null count):**")
-            _null_series = df_active[numeric_cols].isnull().sum().sort_values(ascending=False).head(20)
-            st.dataframe(_null_series.reset_index().rename(columns={"index":"Column", 0:"Nulls"}), hide_index=True)
-
+        
         date_list = sorted(df_active[date_col].dt.date.unique())
 
         r1, r2, r3, r4 = st.columns(4)
@@ -1009,7 +1000,7 @@ if file:
 
         df_f = df_f.dropna(subset=[date_col, primary, secondary])
 
-        st.write(f"df_active shape = {df_f.shape}")
+        
         x = df_f[primary]
         y = df_f[secondary]
 
